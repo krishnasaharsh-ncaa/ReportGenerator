@@ -6,6 +6,7 @@ import pandas as pd
 from fpdf import FPDF
 
 from pdf_utils import add_section_header, add_side_by_side_sections, add_table, add_key_value_table
+from report_io import read_excel_with_detected_header
 
 
 class EntityMetricsReport(FPDF):
@@ -86,16 +87,16 @@ def _build_top_rows(df, top_n=10):
 
 
 def build_metrics(entity_overview_path="data/Entity_overview.xlsx"):
-    entities = pd.read_excel(entity_overview_path, header=2)
-    entities.columns = entities.columns.str.strip()
-
-    if "Entity name" not in entities.columns and "Investment entity name" in entities.columns:
-        entities = entities.rename(columns={"Investment entity name": "Entity name"})
-
     required_cols = {"Entity name", "Entity status", "Commitment", "Equity balance"}
-    missing = sorted(required_cols - set(entities.columns))
-    if missing:
-        raise ValueError(f"Missing required columns in {entity_overview_path}: {missing}")
+    entities = read_excel_with_detected_header(
+        entity_overview_path,
+        required_columns=required_cols,
+        column_aliases={
+            "investment entity name": "Entity name",
+        },
+        header_rows=range(6),
+    )
+    entities.columns = entities.columns.str.strip()
 
     entities["Entity name"] = entities["Entity name"].fillna("").astype(str).str.strip()
     entities["Entity status"] = entities["Entity status"].fillna("").astype(str).str.strip()

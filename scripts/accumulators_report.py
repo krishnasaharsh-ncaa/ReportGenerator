@@ -6,6 +6,7 @@ from datetime import datetime
 import pandas as pd
 from fpdf import FPDF
 from pdf_utils import add_bullet_notes, add_key_value_table, add_section_header, add_subsection_header, add_side_by_side_metrics, add_side_by_side_sections, add_three_sections, add_table
+from report_io import read_csv_flexible
 
 
 class AccumulatorReport(FPDF):
@@ -142,8 +143,8 @@ def compute_account_metrics(accounts_df):
 
 
 def build_metrics(base_path="data"):
-    new_contacts = pd.read_csv(os.path.join(base_path, "js_contacts.csv"))
-    accounts = pd.read_csv(os.path.join(base_path, "Accounts.csv"), low_memory=False)
+    new_contacts = read_csv_flexible(os.path.join(base_path, "js_contacts.csv"))
+    accounts = read_csv_flexible(os.path.join(base_path, "Accounts.csv"), low_memory=False)
     new_contacts.columns = new_contacts.columns.str.strip()
     accounts.columns = accounts.columns.str.strip()
     new_contacts["Full Name"] = (
