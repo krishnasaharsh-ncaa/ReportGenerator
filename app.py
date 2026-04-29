@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import keyring
 from juniper.config import KEYRING_SERVICE, KEYRING_EMAIL_KEY, KEYRING_PASSWORD_KEY, EXPORTS
 from juniper.refresh import start_refresh, get_refresh_status
@@ -33,6 +34,14 @@ def _env_list(name):
     return [item.strip() for item in raw.split(",") if item.strip()]
 
 
+def _display_timezone():
+    tz_name = os.environ.get("DISPLAY_TIMEZONE", "America/New_York").strip() or "America/New_York"
+    try:
+        return ZoneInfo(tz_name)
+    except ZoneInfoNotFoundError:
+        return timezone.utc
+
+
 CORS_ALLOWED_ORIGINS = _env_list("CORS_ALLOWED_ORIGINS")
 if CORS_ALLOWED_ORIGINS:
     CORS(app, resources={r"/api/*": {"origins": CORS_ALLOWED_ORIGINS}})
@@ -55,6 +64,7 @@ ARTIFACT_STORE = build_artifact_store(DATA_DIR)
 ENABLE_JUNIPER_REFRESH = _env_flag("ENABLE_JUNIPER_REFRESH", default=True)
 ENABLE_SOURCE_UPLOADS = _env_flag("ENABLE_SOURCE_UPLOADS", default=True)
 ENABLE_CREDENTIAL_SETUP = _env_flag("ENABLE_CREDENTIAL_SETUP", default=True)
+DISPLAY_TZ = _display_timezone()
 
 # Define the 4 source files and 4 reports
 SOURCE_FILES = [
@@ -92,8 +102,8 @@ def get_file_info(filename, stored_metadata=None):
             status = "fresh"
             modified = None
         else:
-            dt_local = dt.astimezone()
-            now = datetime.now(dt_local.tzinfo)
+            dt_local = dt.astimezone(DISPLAY_TZ)
+            now = datetime.now(DISPLAY_TZ)
             delta = now - dt_local
             if delta.days <= 0:
                 age_label = "Updated today"
@@ -107,7 +117,7 @@ def get_file_info(filename, stored_metadata=None):
             else:
                 age_label = f"Updated {delta.days}d ago"
                 status = "stale"
-            modified = dt_local.strftime("%b %d, %Y %H:%M")
+            modified = dt_local.strftime("%b %d, %Y %H:%M %Z")
         return {
             "exists": True,
             "age_label": age_label,
@@ -126,8 +136,8 @@ def get_report_info(output_filename):
     path = os.path.join(OUTPUT_DIR, output_filename)
     if os.path.exists(path):
         mtime = os.path.getmtime(path)
-        dt = datetime.fromtimestamp(mtime)
-        return {"exists": True, "generated": dt.strftime("%b %d, %Y %H:%M")}
+        dt = datetime.fromtimestamp(mtime, tz=timezone.utc).astimezone(DISPLAY_TZ)
+        return {"exists": True, "generated": dt.strftime("%b %d, %Y %H:%M %Z")}
     return {"exists": False, "generated": None}
 
 
