@@ -5,7 +5,7 @@ from datetime import datetime
 
 import pandas as pd
 from fpdf import FPDF
-from pdf_utils import add_key_value_table, add_section_header, add_subsection_header, add_side_by_side_metrics, add_side_by_side_sections, add_three_sections, add_table
+from pdf_utils import add_bullet_notes, add_key_value_table, add_section_header, add_subsection_header, add_side_by_side_metrics, add_side_by_side_sections, add_three_sections, add_table
 
 
 class AccumulatorReport(FPDF):
@@ -374,13 +374,15 @@ def create_pdf(output_path="outputs/Accumulator_Report.pdf", base_path="data"):
     
     pdf.ln(8)
     add_section_header(pdf, "METRIC DEFINITIONS")
-    pdf.set_font("helvetica", "", 8)
-    pdf.multi_cell(0, 5, "- Accumulator investors are contacts and accounts where 'Contact Type' and 'Account Type' are marked 'Accumulator' in js_contacts.csv and Accounts.csv respectively.")
-    pdf.multi_cell(0, 5, "- Mean and median investment are calculated from 'Committed amount' for those accumulator contacts.")
-    pdf.multi_cell(0, 5, "- Top 20 table ranks accumulators investors by summed committed amount.")
-    #pdf.multi_cell(0, 5, "- Total Accounts includes accounts with active and/or closed investment balances.")
-    #pdf.multi_cell(0, 5, "- Total Dormant Accounts includes closed accounts with no active balance and close date older than 36 months.")
-    pdf.multi_cell(0, 5, "- Average Active Commitment is the average 'Active commitment' across active accounts.")
+    add_bullet_notes(
+        pdf,
+        [
+            "- Accumulator investors are contacts and accounts where 'Contact Type' and 'Account Type' are marked 'Accumulator' in js_contacts.csv and Accounts.csv respectively.",
+            "- Mean and median investment are calculated from 'Committed amount' for those accumulator contacts.",
+            "- Top 20 table ranks accumulators investors by summed committed amount.",
+            "- Average Active Commitment is the average 'Active commitment' across active accounts.",
+        ],
+    )
 
     output_dir = os.path.dirname(output_path)
     if output_dir:

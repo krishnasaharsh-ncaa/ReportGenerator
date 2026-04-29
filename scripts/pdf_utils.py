@@ -17,21 +17,33 @@ def _ensure_matplotlib_config_dir() -> None:
 
 def add_section_header(pdf, title: str) -> None:
     """Add a styled section header."""
+    pdf.set_x(pdf.l_margin)
     pdf.set_font("helvetica", "B", 11)
     pdf.set_text_color(40, 40, 40)
     pdf.cell(0, 7, title, ln=True)
     pdf.set_draw_color(200, 200, 200)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(4)
+    pdf.set_x(pdf.l_margin)
 
 def add_subsection_header(pdf, title: str) -> None:
     """Add a styled sub section header."""
+    pdf.set_x(pdf.l_margin)
     pdf.set_font("helvetica", "B", 10)
     pdf.set_text_color(40, 40, 40)
     pdf.cell(0, 7, title, ln=True)
     pdf.set_draw_color(200, 200, 200)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(4)
+    pdf.set_x(pdf.l_margin)
+
+
+def add_bullet_notes(pdf, lines: Sequence[str], *, font_size: int = 8, line_height: int = 5) -> None:
+    """Render wrapped note lines while keeping the cursor anchored to the left margin."""
+    pdf.set_font("helvetica", "", font_size)
+    for line in lines:
+        pdf.set_x(pdf.l_margin)
+        pdf.multi_cell(0, line_height, line)
 
 
 def add_key_value_table(

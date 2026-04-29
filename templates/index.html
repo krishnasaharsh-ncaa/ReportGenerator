@@ -433,7 +433,9 @@
       z-index: 200;
       opacity: 0;
       transition: all 0.25s;
-      white-space: nowrap;
+      max-width: min(720px, calc(100vw - 32px));
+      white-space: pre-wrap;
+      word-break: break-word;
       pointer-events: none;
     }
 
@@ -964,7 +966,8 @@
     t.textContent = msg;
     t.className = `show ${type}`;
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => { t.className = ''; }, 3500);
+    const timeoutMs = type === 'error' ? 10000 : 3500;
+    toastTimer = setTimeout(() => { t.className = ''; }, timeoutMs);
   }
 
   // ── Juniper Square Refresh ──

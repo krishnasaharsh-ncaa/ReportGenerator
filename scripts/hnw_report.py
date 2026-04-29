@@ -6,6 +6,7 @@ from datetime import datetime
 from itertools import combinations
 
 from pdf_utils import (
+    add_bullet_notes,
     add_comparison_charts,
     add_key_value_table,
     add_section_header,
@@ -677,15 +678,19 @@ def create_pdf(output_path="outputs/HNW_Report.pdf", base_path="data"):
 
     pdf.ln(8)
     add_section_header(pdf, "METRIC DEFINITIONS")
-    pdf.set_font("helvetica", "", 8)
-    pdf.multi_cell(0, 5, "- Main investor is the first listed contact on each account; account values are rolled up to that person.")
-    pdf.multi_cell(0, 5, "- Institutional names are excluded from HNW metrics and tier tables.")
-    pdf.multi_cell(0, 5, "- Total Accounts includes accounts with active and/or closed investment balances.")
-    pdf.multi_cell(0, 5, "- Total Dormant Accounts includes closed accounts with no active balance and close date older than 36 months.")
-    pdf.multi_cell(0, 5, "- Average Active Commitment is the average 'Active commitment' across active accounts.")
-    pdf.multi_cell(0, 5, "- Tier 1: commitment >= $1,000,001.")
-    pdf.multi_cell(0, 5, "- Tier 2: commitment $400,001 to $1,000,000 and positions > 2.")
-    pdf.multi_cell(0, 5, "- Tier 3: commitment <= $400,000 and positions > 2.")
+    add_bullet_notes(
+        pdf,
+        [
+            "- Main investor is the first listed contact on each account; account values are rolled up to that person.",
+            "- Institutional names are excluded from HNW metrics and tier tables.",
+            "- Total Accounts includes accounts with active and/or closed investment balances.",
+            "- Total Dormant Accounts includes closed accounts with no active balance and close date older than 36 months.",
+            "- Average Active Commitment is the average 'Active commitment' across active accounts.",
+            "- Tier 1: commitment >= $1,000,001.",
+            "- Tier 2: commitment $400,001 to $1,000,000 and positions > 2.",
+            "- Tier 3: commitment <= $400,000 and positions > 2.",
+        ],
+    )
 
     output_dir = os.path.dirname(output_path)
     if output_dir:
