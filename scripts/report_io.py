@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import os
 from typing import Iterable
 
@@ -32,19 +33,66 @@ def read_csv_with_detected_header(
     header_rows: Iterable[int] = range(15),
     **kwargs,
 ) -> pd.DataFrame:
+    header_row_candidates = list(header_rows)
     required = set(required_columns)
     aliases = {k.lower(): v for k, v in (column_aliases or {}).items()}
     attempts: list[str] = []
     last_error: Exception | None = None
 
     for encoding in CSV_ENCODINGS:
+        try:
+            with open(path, "r", encoding=encoding, newline="") as handle:
+                raw_lines = handle.readlines()
+        except UnicodeDecodeError as exc:
+            last_error = exc
+            continue
+
         for delimiter in delimiters:
-            for header_row in header_rows:
+            for header_row, line in enumerate(raw_lines[: max(header_row_candidates, default=0) + 1]):
+                parsed = next(csv.reader([line], delimiter=delimiter), [])
+                normalized_fields = {_normalize_column_name(field) for field in parsed if str(field).strip()}
+                canonical_fields = {aliases.get(field, field) for field in normalized_fields}
+                if required.issubset(canonical_fields):
+                    try:
+                        df = pd.read_csv(
+                            path,
+                            encoding=encoding,
+                            sep=delimiter,
+                            skiprows=header_row,
+                            engine="python",
+                            on_bad_lines="skip",
+                            **kwargs,
+                        )
+                    except (UnicodeDecodeError, pd.errors.ParserError) as exc:
+                        last_error = exc
+                        attempts.append(
+                            f"encoding={encoding}, sep={repr(delimiter)}, skiprows={header_row}, raw-header-match parse failed"
+                        )
+                        continue
+
+                    df.columns = [str(col).strip() for col in df.columns]
+                    rename_map: dict[str, str] = {}
+                    for col in df.columns:
+                        normalized = _normalize_column_name(col)
+                        canonical = aliases.get(normalized)
+                        if canonical:
+                            rename_map[col] = canonical
+                    if rename_map:
+                        df = df.rename(columns=rename_map)
+                    df = _coalesce_duplicate_columns(df)
+                    if required.issubset(set(df.columns)):
+                        return df
+
+    for encoding in CSV_ENCODINGS:
+        for delimiter in delimiters:
+            for header_row in header_row_candidates:
                 try:
                     df = pd.read_csv(
                         path,
                         encoding=encoding,
                         sep=delimiter,
+                        engine="python",
+                        on_bad_lines="skip",
                         skiprows=header_row,
                         **kwargs,
                     )
