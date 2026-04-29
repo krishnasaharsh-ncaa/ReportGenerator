@@ -23,8 +23,80 @@ def read_csv_flexible(path: str, **kwargs) -> pd.DataFrame:
     return pd.read_csv(path, **kwargs)
 
 
+def read_csv_with_detected_header(
+    path: str,
+    *,
+    required_columns: Iterable[str],
+    column_aliases: dict[str, str] | None = None,
+    delimiters: Iterable[str] = (",", ";", "\t"),
+    header_rows: Iterable[int] = range(15),
+    **kwargs,
+) -> pd.DataFrame:
+    required = set(required_columns)
+    aliases = {k.lower(): v for k, v in (column_aliases or {}).items()}
+    attempts: list[str] = []
+    last_error: Exception | None = None
+
+    for encoding in CSV_ENCODINGS:
+        for delimiter in delimiters:
+            for header_row in header_rows:
+                try:
+                    df = pd.read_csv(
+                        path,
+                        encoding=encoding,
+                        sep=delimiter,
+                        skiprows=header_row,
+                        **kwargs,
+                    )
+                except (UnicodeDecodeError, pd.errors.ParserError) as exc:
+                    last_error = exc
+                    continue
+
+                df.columns = [str(col).strip() for col in df.columns]
+                rename_map: dict[str, str] = {}
+                for col in df.columns:
+                    normalized = _normalize_column_name(col)
+                    canonical = aliases.get(normalized)
+                    if canonical:
+                        rename_map[col] = canonical
+                if rename_map:
+                    df = df.rename(columns=rename_map)
+                df = _coalesce_duplicate_columns(df)
+
+                if required.issubset(set(df.columns)):
+                    return df
+
+                attempts.append(
+                    f"encoding={encoding}, sep={repr(delimiter)}, skiprows={header_row}, cols={list(df.columns)[:8]}"
+                )
+
+    preview = "; ".join(attempts[:10])
+    raise ValueError(
+        f"Could not locate CSV header for {os.path.basename(path)} with required columns {sorted(required)}. "
+        f"Tried: {preview}"
+    ) from last_error
+
+
 def _normalize_column_name(value: object) -> str:
     return " ".join(str(value).strip().split()).lower()
+
+
+def _coalesce_duplicate_columns(df: pd.DataFrame) -> pd.DataFrame:
+    if df.columns.is_unique:
+        return df
+
+    collapsed = pd.DataFrame(index=df.index)
+    seen: set[str] = set()
+    for column in df.columns:
+        if column in seen:
+            continue
+        same_named = df.loc[:, df.columns == column]
+        if same_named.shape[1] == 1:
+            collapsed[column] = same_named.iloc[:, 0]
+        else:
+            collapsed[column] = same_named.bfill(axis=1).iloc[:, 0]
+        seen.add(column)
+    return collapsed
 
 
 def read_excel_with_detected_header(
@@ -50,6 +122,7 @@ def read_excel_with_detected_header(
                 rename_map[col] = canonical
         if rename_map:
             df = df.rename(columns=rename_map)
+        df = _coalesce_duplicate_columns(df)
 
         columns = set(df.columns)
         if required.issubset(columns):

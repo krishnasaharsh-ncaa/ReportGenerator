@@ -93,6 +93,16 @@ def build_metrics(entity_overview_path="data/Entity_overview.xlsx"):
         required_columns=required_cols,
         column_aliases={
             "investment entity name": "Entity name",
+            "entity name": "Entity name",
+            "status": "Entity status",
+            "entity status": "Entity status",
+            "total commitment": "Commitment",
+            "commitment amount": "Commitment",
+            "entity commitment": "Commitment",
+            "net asset value": "Equity balance",
+            "capital account balance": "Equity balance",
+            "equity balance": "Equity balance",
+            "unfunded commitment": "Unfunded commitment",
         },
         header_rows=range(6),
     )

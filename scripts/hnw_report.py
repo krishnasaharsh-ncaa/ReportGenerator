@@ -16,7 +16,7 @@ from pdf_utils import (
 
 import pandas as pd
 from fpdf import FPDF
-from report_io import read_csv_flexible
+from report_io import read_csv_flexible, read_csv_with_detected_header
 
 
 class HNWReport(FPDF):
@@ -354,7 +354,16 @@ def create_quarterly_reports(contacts, new_contacts):
 def build_metrics(base_path="data"):
     accounts = read_csv_flexible(os.path.join(base_path, "Accounts.csv"), low_memory=False)
     new_contacts = read_csv_flexible(os.path.join(base_path, "js_contacts.csv"))
-    contacts = read_csv_flexible(os.path.join(base_path, "Contact Export.csv"))
+    contacts = read_csv_with_detected_header(
+        os.path.join(base_path, "Contact Export.csv"),
+        required_columns={
+            "Contact ID",
+            "Full Contact Name",
+            "Contact Created At Date",
+            "Count of Positions",
+            "Total Commitment",
+        },
+    )
 
     quarterly_data = create_quarterly_reports(contacts, new_contacts)
 
