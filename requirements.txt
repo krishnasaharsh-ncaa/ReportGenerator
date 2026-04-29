@@ -1,0 +1,13 @@
+flask
+flask-cors
+gunicorn
+reportlab
+pandas
+openpyxl
+matplotlib
+fpdf2
+playwright
+keyring
+requests
+msal
+waitress

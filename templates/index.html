@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Report Generator</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    [hidden] { display: none !important; }
+
+    :root {
+      --bg:        #ffffff;
+      --surface:   #f4f8f6;
+      --border:    #cce0d8;
+      --accent:    #309C76;
+      --accent2:   #0A100D;
+      --green:     #309C76;
+      --amber:     #b45309;
+      --red:       #dc2626;
+      --text:      #0A100D;
+      --muted:     #6b7c74;
+      --card-glow: rgba(48,156,118,0.06);
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+
+    .app {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 48px 24px 80px;
+    }
+
+    /* ── Header ── */
+    header {
+      margin-bottom: 48px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .header-left h1 {
+      font-family: 'Fraunces', serif;
+      font-size: 32px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+      color: var(--text);
+      line-height: 1.1;
+    }
+
+    .header-left h1 span {
+      color: var(--accent);
+    }
+
+    .header-left p {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .last-refresh {
+      font-size: 11px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .pulse {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.4; transform: scale(0.8); }
+    }
+
+    /* ── Section titles ── */
+    .section-title {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── Source Files Panel ── */
+    .files-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 40px;
+    }
+
+    .files-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .files-header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--text);
+    }
+
+    .files-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    }
+
+    .file-item {
+      padding: 16px 20px;
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+    }
+
+    .file-item:hover { background: rgba(255,255,255,0.02); }
+
+    .file-item-name {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 6px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .file-item-filename {
+      font-size: 10px;
+      color: var(--muted);
+      margin-bottom: 8px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-weight: 500;
+    }
+
+    .badge.fresh   { background: rgba(52,211,153,0.1); color: var(--green); }
+    .badge.warning { background: rgba(251,191,36,0.1);  color: var(--amber); }
+    .badge.stale   { background: rgba(248,113,113,0.1); color: var(--red);   }
+    .badge.missing { background: rgba(100,116,139,0.1); color: var(--muted); }
+
+    .badge-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      font-weight: 500;
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #ffffff;
+    }
+    .btn-primary:hover:not(:disabled) { background: #267d5e; }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover:not(:disabled) { background: rgba(48,156,118,0.06); border-color: var(--accent); color: var(--accent); }
+
+    .btn-upload {
+      background: rgba(48,156,118,0.1);
+      color: var(--accent);
+      border: 1px solid rgba(48,156,118,0.2);
+    }
+    .btn-upload:hover:not(:disabled) { background: rgba(48,156,118,0.18); }
+
+    .btn-sm { padding: 5px 12px; font-size: 11px; }
+
+    /* ── Upload area ── */
+    .upload-zone {
+      border: 1.5px dashed var(--border);
+      border-radius: 10px;
+      padding: 28px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 8px;
+      display: none;
+    }
+
+    .upload-zone.active { display: block; }
+    .upload-zone:hover, .upload-zone.dragover {
+      border-color: var(--accent);
+      background: rgba(48,156,118,0.05);
+    }
+
+    .upload-zone p { color: var(--muted); font-size: 12px; margin-top: 8px; }
+
+    .upload-inputs { display: none; }
+
+    /* ── Reports grid ── */
+    .reports-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+
+    .report-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .report-card:hover {
+      border-color: rgba(48,156,118,0.4);
+      box-shadow: 0 0 0 1px rgba(48,156,118,0.08), 0 4px 24px rgba(10,16,13,0.08);
+    }
+
+    .report-card-header {
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .report-card-title {
+      font-family: 'Fraunces', serif;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.2;
+    }
+
+    .report-card-meta {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .report-card-actions {
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .generate-btn {
+      margin-left: auto;
+    }
+
+    /* ── Spinner ── */
+    .spinner {
+      width: 12px; height: 12px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-top-color: currentColor;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      display: none;
+    }
+
+    .btn.loading .spinner { display: block; }
+    .btn.loading .btn-label { opacity: 0.7; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── PDF Viewer ── */
+    .pdf-viewer-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.8);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .pdf-viewer-overlay.open { display: flex; }
+
+    .pdf-viewer-modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 860px;
+      height: 90vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 24px 80px rgba(10,16,13,0.18);
+    }
+
+    .pdf-viewer-toolbar {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .pdf-viewer-title {
+      font-family: 'Fraunces', serif;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .pdf-viewer-toolbar-actions { display: flex; gap: 8px; }
+
+    iframe#pdfFrame {
+      flex: 1;
+      border: none;
+      background: #f0f0f0;
+    }
+
+    /* ── Download All ── */
+    .download-all-section {
+      border-top: 1px solid var(--border);
+      padding-top: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .download-all-info h3 {
+      font-family: 'Fraunces', serif;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .download-all-info p {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .btn-generate-all {
+      background: linear-gradient(135deg, #309C76, #0A100D);
+      color: #fff;
+      padding: 12px 28px;
+      font-size: 13px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      font-family: 'DM Mono', monospace;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+
+    .btn-generate-all:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+    .btn-generate-all:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 20px;
+      font-size: 12px;
+      color: var(--text);
+      z-index: 200;
+      opacity: 0;
+      transition: all 0.25s;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    #toast.success { border-color: var(--green); color: var(--green); }
+    #toast.error   { border-color: var(--red);   color: var(--red);   }
+
+    /* ── Refresh button ── */
+    .btn-refresh {
+      background: rgba(52,211,153,0.1);
+      color: var(--green);
+      border: 1px solid rgba(52,211,153,0.2);
+    }
+    .btn-refresh:hover:not(:disabled) { background: rgba(52,211,153,0.18); }
+
+    /* ── Refresh progress panel ── */
+    .refresh-panel {
+      display: none;
+      border-top: 1px solid var(--border);
+      padding: 16px 20px;
+    }
+    .refresh-panel.active { display: block; }
+
+    .refresh-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .refresh-panel-title {
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+    }
+
+    .refresh-file-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .refresh-file-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--text);
+    }
+
+    .refresh-file-status {
+      width: 16px;
+      text-align: center;
+      font-size: 13px;
+    }
+
+    .mfa-notice {
+      display: none;
+      background: rgba(251,191,36,0.08);
+      border: 1px solid rgba(251,191,36,0.2);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-top: 12px;
+      font-size: 12px;
+      color: var(--amber);
+    }
+    .mfa-notice.active { display: block; }
+
+    /* ── Credentials modal ── */
+    .creds-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .creds-overlay.open { display: flex; }
+
+    .creds-modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 400px;
+      padding: 28px;
+      box-shadow: 0 24px 80px rgba(10,16,13,0.18);
+    }
+
+    .creds-modal h3 {
+      font-family: 'Fraunces', serif;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .creds-modal .creds-desc {
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+
+    .creds-field {
+      margin-bottom: 14px;
+    }
+
+    .creds-field label {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .creds-field input {
+      width: 100%;
+      padding: 9px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .creds-field input:focus { border-color: var(--accent); }
+
+    .creds-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 20px;
+    }
+
+    .settings-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 4px;
+      transition: color 0.15s;
+      display: flex;
+      align-items: center;
+    }
+    .settings-btn:hover { color: var(--text); }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      .reports-grid { grid-template-columns: 1fr; }
+      header { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <header>
+    <div class="header-left">
+      <h1>Report <span>Generator</span></h1>
+      <p>Juniper Square · PDF Reports</p>
+    </div>
+    <div class="last-refresh">
+      <button class="settings-btn" id="settingsBtn" onclick="openCredentials()" title="Juniper Square Settings">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+      <span class="pulse"></span>
+      <span id="lastRefresh">Checking status...</span>
+    </div>
+  </header>
+
+  <!-- Source Files -->
+  <div class="section-title">Source Files</div>
+  <div class="files-panel">
+    <div class="files-header">
+      <div class="files-header-left">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+        4 source files · CSV / Excel
+      </div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <button class="btn btn-refresh btn-sm" id="refreshAllBtn" onclick="startRefresh(null, this)">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+          <span class="btn-label">Refresh All Data</span>
+          <span class="spinner"></span>
+        </button>
+        <button class="btn btn-upload btn-sm" id="uploadToggleBtn" onclick="toggleUpload()">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+          <span class="btn-label">Upload Files</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="files-grid" id="filesGrid">
+      <!-- populated by JS -->
+    </div>
+
+    <!-- Upload Zone -->
+    <div id="uploadZone" class="upload-zone" onclick="document.getElementById('bulkUpload').click()"
+         ondragover="event.preventDefault(); this.classList.add('dragover')"
+         ondragleave="this.classList.remove('dragover')"
+         ondrop="handleDrop(event)">
+      <svg width="28" height="28" fill="none" stroke="var(--accent2)" stroke-width="1.5" viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+      <p>Click to browse or drag & drop all 4 files here</p>
+      <p style="font-size:10px; margin-top:4px;">capital_activity.csv · investor_data.csv · fund_performance.xlsx · distributions.csv</p>
+    </div>
+    <div class="upload-inputs">
+      <input type="file" id="bulkUpload" multiple accept=".csv,.xlsx,.xls" onchange="handleFileSelect(event)"/>
+    </div>
+
+    <!-- Refresh Progress Panel -->
+    <div class="refresh-panel" id="refreshPanel">
+      <div class="refresh-panel-header">
+        <span class="refresh-panel-title" id="refreshPanelTitle">Refreshing from Juniper Square...</span>
+      </div>
+      <div class="refresh-file-list" id="refreshFileList"></div>
+      <div class="mfa-notice" id="mfaNotice">
+        A browser window has opened on this machine. Please complete the SMS verification code in that window. This page will update automatically once login is complete.
+      </div>
+    </div>
+  </div>
+
+  <!-- Reports -->
+  <div class="section-title">Reports</div>
+  <div class="reports-grid" id="reportsGrid">
+    <!-- populated by JS -->
+  </div>
+
+  <!-- Download All -->
+  <div class="download-all-section">
+    <div class="download-all-info">
+      <h3>Generate All Reports</h3>
+    </div>
+    <button class="btn-generate-all" id="generateAllBtn" onclick="generateAll()">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      <span class="btn-label">Generate All Reports</span>
+      <span class="spinner"></span>
+    </button>
+  </div>
+
+</div>
+
+<!-- PDF Viewer Modal -->
+<div class="pdf-viewer-overlay" id="pdfOverlay" onclick="closePdfViewer(event)">
+  <div class="pdf-viewer-modal">
+    <div class="pdf-viewer-toolbar">
+      <div class="pdf-viewer-title" id="pdfViewerTitle">Report</div>
+      <div class="pdf-viewer-toolbar-actions">
+        <button class="btn btn-ghost btn-sm" id="pdfDownloadBtn" onclick="downloadFromViewer()">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download
+        </button>
+        <button class="btn btn-ghost btn-sm" onclick="closePdfViewer()">✕ Close</button>
+      </div>
+    </div>
+    <iframe id="pdfFrame" src=""></iframe>
+  </div>
+</div>
+
+<!-- Credentials Modal -->
+<div class="creds-overlay" id="credsOverlay" onclick="if(event.target===this)closeCredentials()">
+  <div class="creds-modal">
+    <h3>Juniper Square Credentials</h3>
+    <p class="creds-desc">Stored securely in your system keychain. Required for automated data refresh.</p>
+    <div class="creds-field">
+      <label>Email</label>
+      <input type="email" id="credsEmail" placeholder="user@denholtz.com" />
+    </div>
+    <div class="creds-field">
+      <label>Password</label>
+      <input type="password" id="credsPassword" placeholder="Enter password" />
+    </div>
+    <div id="credsStatus" style="font-size:11px;margin-top:8px;color:var(--muted);"></div>
+    <div class="creds-actions">
+      <button class="btn btn-ghost btn-sm" onclick="closeCredentials()">Cancel</button>
+      <button class="btn btn-primary btn-sm" id="credsSaveBtn" onclick="saveCredentials()">
+        <span class="btn-label">Save Credentials</span>
+        <span class="spinner"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+  let currentViewReportId = null;
+  let statusData = null;
+
+  // ── Fetch status on load ──
+  async function loadStatus() {
+    try {
+      const res = await fetch('/api/status');
+      statusData = await res.json();
+      renderControls(statusData);
+      renderFiles(statusData.files);
+      renderReports(statusData.reports);
+      document.getElementById('lastRefresh').textContent = 'Refreshed ' + new Date().toLocaleTimeString();
+    } catch (e) {
+      document.getElementById('lastRefresh').textContent = 'Could not connect to server';
+    }
+  }
+
+  // ── Render source files ──
+  function renderControls(state) {
+    const refreshEnabled = Boolean(state?.refresh_enabled);
+    const uploadEnabled = Boolean(state?.upload_enabled);
+    const credentialSetupEnabled = Boolean(state?.credential_setup_enabled);
+
+    document.getElementById('refreshAllBtn').hidden = !refreshEnabled;
+    document.getElementById('uploadToggleBtn').hidden = !uploadEnabled;
+    document.getElementById('uploadZone').hidden = !uploadEnabled;
+    document.getElementById('settingsBtn').hidden = !credentialSetupEnabled;
+
+    if (!uploadEnabled) {
+      document.getElementById('uploadZone').classList.remove('active');
+    }
+    if (!credentialSetupEnabled) {
+      closeCredentials();
+    }
+  }
+
+  function renderFiles(files) {
+    const grid = document.getElementById('filesGrid');
+    const refreshEnabled = Boolean(statusData?.refresh_enabled);
+    grid.innerHTML = files.map(f => `
+      <div class="file-item">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <div class="file-item-name">${f.label}</div>
+          ${refreshEnabled && f.refreshable ? `
+            <button class="btn btn-refresh btn-sm" id="refresh-${f.id}" onclick="startRefresh('${f.export_name}', this)" style="padding:3px 8px;font-size:10px;">
+              <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+              <span class="btn-label">Refresh</span>
+              <span class="spinner"></span>
+            </button>
+          ` : ''}
+        </div>
+        <div class="file-item-filename">${f.filename}</div>
+        <span class="badge ${f.status}">
+          <span class="badge-dot"></span>
+          ${f.age_label}
+        </span>
+        ${f.modified ? `<div style="font-size:10px;color:var(--muted);margin-top:6px;">${f.modified}</div>` : ''}
+      </div>
+    `).join('');
+  }
+
+  // ── Render report cards ──
+  function renderReports(reports) {
+    const grid = document.getElementById('reportsGrid');
+    grid.innerHTML = reports.map(r => `
+      <div class="report-card" id="card-${r.id}">
+        <div class="report-card-header">
+          <div>
+            <div class="report-card-title">${r.label}</div>
+            <div class="report-card-meta">
+              ${r.exists ? '✓ Last generated ' + r.generated : 'Not yet generated'}
+            </div>
+          </div>
+          <button class="btn btn-ghost btn-sm generate-btn" id="gen-${r.id}" onclick="generateReport('${r.id}', '${r.label}')">
+            <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <span class="btn-label">Generate</span>
+            <span class="spinner"></span>
+          </button>
+        </div>
+        <div class="report-card-actions">
+          <button class="btn btn-primary btn-sm" onclick="viewReport('${r.id}', '${r.label}')" ${!r.exists ? 'disabled' : ''}>
+            <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            View Report
+          </button>
+          <button class="btn btn-ghost btn-sm" onclick="downloadReport('${r.id}')" ${!r.exists ? 'disabled' : ''}>
+            <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download
+          </button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ── Generate single report ──
+  async function generateReport(reportId, label) {
+    const btn = document.getElementById(`gen-${reportId}`);
+    setLoading(btn, true);
+    try {
+      const res = await fetch(`/api/generate/${reportId}`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`✓ ${label} generated`, 'success');
+        await loadStatus();
+      } else {
+        showToast(`Error: ${data.error || 'Generation failed'}`, 'error');
+      }
+    } catch (e) {
+      showToast('Connection error', 'error');
+    } finally {
+      setLoading(btn, false);
+    }
+  }
+
+  // ── Generate all ──
+  async function generateAll() {
+    const btn = document.getElementById('generateAllBtn');
+    setLoading(btn, true);
+    btn.disabled = true;
+    try {
+      const res = await fetch('/api/generate-all', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        showToast('✓ All reports generated', 'success');
+        await loadStatus();
+      } else {
+        showToast(`Error: ${data.error || 'Generation failed'}`, 'error');
+      }
+    } catch (e) {
+      showToast('Connection error', 'error');
+    } finally {
+      setLoading(btn, false);
+      btn.disabled = false;
+    }
+  }
+
+  // ── View report in modal ──
+  function viewReport(reportId, label) {
+    currentViewReportId = reportId;
+    document.getElementById('pdfViewerTitle').textContent = label;
+    document.getElementById('pdfFrame').src = `/api/report/${reportId}`;
+    document.getElementById('pdfOverlay').classList.add('open');
+  }
+
+  function closePdfViewer(event) {
+    if (!event || event.target === document.getElementById('pdfOverlay') || !event.target.closest('.pdf-viewer-modal')) {
+      document.getElementById('pdfOverlay').classList.remove('open');
+      document.getElementById('pdfFrame').src = '';
+      currentViewReportId = null;
+    }
+  }
+
+  function downloadFromViewer() {
+    if (currentViewReportId) downloadReport(currentViewReportId);
+  }
+
+  // ── Download report ──
+  function downloadReport(reportId) {
+    window.location.href = `/api/download/${reportId}`;
+  }
+
+  // ── Upload toggle ──
+  function toggleUpload() {
+    if (!statusData?.upload_enabled) {
+      showToast('Source uploads are disabled on this instance', 'error');
+      return;
+    }
+    const zone = document.getElementById('uploadZone');
+    zone.classList.toggle('active');
+  }
+
+  // ── Handle file selection ──
+  async function handleFileSelect(event) {
+    await uploadFiles(event.target.files);
+  }
+
+  async function handleDrop(event) {
+    event.preventDefault();
+    document.getElementById('uploadZone').classList.remove('dragover');
+    await uploadFiles(event.dataTransfer.files);
+  }
+
+  async function uploadFiles(fileList) {
+    if (!statusData?.upload_enabled) {
+      showToast('Source uploads are disabled on this instance', 'error');
+      return;
+    }
+    const form = new FormData();
+    const sourceFiles = ['file1','file2','file3','file4'];
+    const filenames = ['capital_activity','investor_data','fund_performance','distributions'];
+
+    // Smart matching: try to match by filename keywords
+    Array.from(fileList).forEach(file => {
+      const nameLower = file.name.toLowerCase();
+      for (let i = 0; i < filenames.length; i++) {
+        if (nameLower.includes(filenames[i].replace('_', '')) || nameLower.includes(filenames[i])) {
+          form.append(sourceFiles[i], file);
+          return;
+        }
+      }
+      // fallback: assign in order
+      form.append(sourceFiles[Array.from(fileList).indexOf(file) % 4], file);
+    });
+
+    try {
+      const res = await fetch('/api/upload', { method: 'POST', body: form });
+      const data = await res.json();
+      if (data.count > 0) {
+        showToast(`✓ Uploaded: ${data.uploaded.join(', ')}`, 'success');
+        document.getElementById('uploadZone').classList.remove('active');
+        await loadStatus();
+      } else {
+        showToast('No matching files found', 'error');
+      }
+    } catch (e) {
+      showToast('Upload failed', 'error');
+    }
+  }
+
+  // ── Helpers ──
+  function setLoading(btn, loading) {
+    if (loading) btn.classList.add('loading');
+    else btn.classList.remove('loading');
+    btn.disabled = loading;
+  }
+
+  let toastTimer;
+  function showToast(msg, type = '') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `show ${type}`;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.className = ''; }, 3500);
+  }
+
+  // ── Juniper Square Refresh ──
+  let refreshPolling = null;
+
+  let activeRefreshBtn = null;
+
+  async function startRefresh(exportName = null, clickedBtn = null) {
+    const btn = clickedBtn;
+
+    if (!statusData?.refresh_enabled) {
+      showToast('Juniper refresh is disabled on this instance', 'error');
+      return;
+    }
+
+    if (statusData?.credential_setup_enabled) {
+      try {
+        const checkRes = await fetch('/api/credentials/check');
+        const checkData = await checkRes.json();
+        if (!checkData.configured) {
+          showToast('Set up credentials first (click the gear icon)', 'error');
+          openCredentials();
+          return;
+        }
+      } catch (e) {
+        showToast('Could not check credentials', 'error');
+        return;
+      }
+    }
+
+    if (btn) { setLoading(btn, true); activeRefreshBtn = btn; }
+
+    try {
+      const res = await fetch('/api/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: exportName ? JSON.stringify({ export_name: exportName }) : '{}',
+      });
+      if (res.status === 409) {
+        showToast('A refresh is already in progress', 'error');
+        if (btn) setLoading(btn, false);
+        return;
+      }
+      const data = await res.json();
+      if (data.status === 'started') {
+        document.getElementById('refreshPanel').classList.add('active');
+        const label = exportName ? exportName : 'Accounts + Contacts';
+        document.getElementById('refreshPanelTitle').textContent = `Refreshing ${label} from Juniper Square...`;
+        document.getElementById('refreshFileList').innerHTML = '';
+        document.getElementById('mfaNotice').classList.remove('active');
+        startRefreshPolling();
+      }
+    } catch (e) {
+      showToast('Could not start refresh', 'error');
+      if (btn) setLoading(btn, false);
+    }
+  }
+
+  function startRefreshPolling() {
+    if (refreshPolling) clearInterval(refreshPolling);
+    refreshPolling = setInterval(pollRefreshStatus, 2000);
+  }
+
+  async function pollRefreshStatus() {
+    try {
+      const res = await fetch('/api/refresh/status');
+      const state = await res.json();
+
+      // Update MFA notice
+      if (state.mfa_required) {
+        document.getElementById('mfaNotice').classList.add('active');
+      } else {
+        document.getElementById('mfaNotice').classList.remove('active');
+      }
+
+      // Update file progress list
+      const fileList = document.getElementById('refreshFileList');
+      fileList.innerHTML = state.progress.map(p => {
+        let icon = '';
+        if (p.status === 'downloading') icon = '<span class="spinner" style="display:inline-block;width:12px;height:12px;"></span>';
+        else if (p.status === 'done') icon = '<span style="color:var(--green);">&#10003;</span>';
+        else if (p.status === 'error') icon = '<span style="color:var(--red);">&#10007;</span>';
+        return `<div class="refresh-file-item"><span class="refresh-file-status">${icon}</span>${p.name}</div>`;
+      }).join('');
+
+      // Check for terminal states
+      if (state.status === 'success' || state.status === 'partial' || state.status === 'error') {
+        clearInterval(refreshPolling);
+        refreshPolling = null;
+        if (activeRefreshBtn) { setLoading(activeRefreshBtn, false); activeRefreshBtn = null; }
+
+        if (state.status === 'success') {
+          document.getElementById('refreshPanelTitle').textContent = 'Refresh complete';
+          showToast(`Data refreshed: ${state.files_downloaded.join(', ')}`, 'success');
+        } else if (state.status === 'partial') {
+          document.getElementById('refreshPanelTitle').textContent = 'Refresh completed with errors';
+          showToast(`Partial refresh. Errors: ${state.errors.join('; ')}`, 'error');
+        } else {
+          document.getElementById('refreshPanelTitle').textContent = 'Refresh failed';
+          showToast(`Refresh failed: ${state.errors.join('; ')}`, 'error');
+        }
+
+        // Reload file status to show updated timestamps
+        await loadStatus();
+
+        // Hide the panel after a few seconds
+        setTimeout(() => {
+          document.getElementById('refreshPanel').classList.remove('active');
+        }, 5000);
+      }
+    } catch (e) {
+      // Polling error — keep trying
+    }
+  }
+
+  // ── Credentials ──
+  function openCredentials() {
+    if (!statusData?.credential_setup_enabled) {
+      showToast('Credential management is disabled on this instance', 'error');
+      return;
+    }
+    document.getElementById('credsOverlay').classList.add('open');
+    document.getElementById('credsStatus').textContent = '';
+    // Check if already configured
+    fetch('/api/credentials/check')
+      .then(r => r.json())
+      .then(data => {
+        if (data.configured) {
+          document.getElementById('credsStatus').textContent = 'Credentials are already configured. Enter new values to update.';
+          document.getElementById('credsStatus').style.color = 'var(--green)';
+        }
+      });
+  }
+
+  function closeCredentials() {
+    document.getElementById('credsOverlay').classList.remove('open');
+    document.getElementById('credsEmail').value = '';
+    document.getElementById('credsPassword').value = '';
+  }
+
+  async function saveCredentials() {
+    if (!statusData?.credential_setup_enabled) {
+      showToast('Credential management is disabled on this instance', 'error');
+      return;
+    }
+    const email = document.getElementById('credsEmail').value.trim();
+    const password = document.getElementById('credsPassword').value.trim();
+    if (!email || !password) {
+      document.getElementById('credsStatus').textContent = 'Both fields are required.';
+      document.getElementById('credsStatus').style.color = 'var(--red)';
+      return;
+    }
+
+    const btn = document.getElementById('credsSaveBtn');
+    setLoading(btn, true);
+
+    try {
+      const res = await fetch('/api/credentials/setup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Credentials saved to system keychain', 'success');
+        closeCredentials();
+      } else {
+        document.getElementById('credsStatus').textContent = data.error || 'Failed to save';
+        document.getElementById('credsStatus').style.color = 'var(--red)';
+      }
+    } catch (e) {
+      document.getElementById('credsStatus').textContent = 'Connection error';
+      document.getElementById('credsStatus').style.color = 'var(--red)';
+    } finally {
+      setLoading(btn, false);
+    }
+  }
+
+  // ── Init ──
+  loadStatus();
+  setInterval(loadStatus, 30000); // refresh every 30s
+</script>
+</body>
+</html>
