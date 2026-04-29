@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import os
 from typing import Iterable
+import zipfile
 
 import pandas as pd
 
@@ -125,6 +126,17 @@ def read_csv_with_detected_header(
     ) from last_error
 
 
+def _looks_like_excel_file(path: str) -> bool:
+    try:
+        if zipfile.is_zipfile(path):
+            return True
+        with open(path, "rb") as handle:
+            signature = handle.read(8)
+        return signature.startswith(b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1")
+    except OSError:
+        return False
+
+
 def _normalize_column_name(value: object) -> str:
     return " ".join(str(value).strip().split()).lower()
 
@@ -185,4 +197,29 @@ def read_excel_with_detected_header(
     raise ValueError(
         f"Missing required columns in {os.path.basename(path)}: {missing}. "
         f"Tried header rows {list(header_rows)}. Seen columns: {preview}"
+    )
+
+
+def read_tabular_with_detected_header(
+    path: str,
+    *,
+    required_columns: Iterable[str],
+    column_aliases: dict[str, str] | None = None,
+    csv_header_rows: Iterable[int] = range(15),
+    excel_header_rows: Iterable[int] = range(15),
+    **kwargs,
+) -> pd.DataFrame:
+    if _looks_like_excel_file(path):
+        return read_excel_with_detected_header(
+            path,
+            required_columns=required_columns,
+            column_aliases=column_aliases,
+            header_rows=excel_header_rows,
+        )
+    return read_csv_with_detected_header(
+        path,
+        required_columns=required_columns,
+        column_aliases=column_aliases,
+        header_rows=csv_header_rows,
+        **kwargs,
     )

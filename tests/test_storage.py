@@ -178,6 +178,54 @@ class SharePointArtifactStoreTests(unittest.TestCase):
             "Contact_Export_-_Evening_20260424.csv",
         )
 
+    def test_prefix_fallback_prefers_filename_timestamp_over_modified_time(self):
+        def handler(method, url, **kwargs):
+            if url.endswith("/root:/ReportGenerator/source-files/Contact%20Export.csv") and method == "GET":
+                return FakeResponse(status_code=404, text="not found")
+            if url.endswith("/root:/ReportGenerator/source-files/Entity_overview.xlsx") and method == "GET":
+                return FakeResponse(status_code=404, text="not found")
+            if url.endswith("/root:/ReportGenerator/source-files:/children") and method == "GET":
+                return FakeResponse(
+                    json_data={
+                        "value": [
+                            {
+                                "id": "evening-item",
+                                "name": "Contact_Export_-_Evening_2026-04-28T1800",
+                                "size": 12,
+                                "eTag": "evening-etag",
+                                "lastModifiedDateTime": "2026-04-29T08:00:00Z",
+                                "webUrl": "https://sharepoint.example/evening",
+                            },
+                            {
+                                "id": "morning-item",
+                                "name": "Contact_Export_-_Morning_2026-04-29T0800",
+                                "size": 18,
+                                "eTag": "morning-etag",
+                                "lastModifiedDateTime": "2026-04-28T20:00:00Z",
+                                "webUrl": "https://sharepoint.example/morning",
+                            },
+                        ]
+                    }
+                )
+            if url.endswith("/items/morning-item/content") and method == "GET":
+                return FakeResponse(content=b"name\nlatest\n", headers={"Content-Type": "text/csv"})
+            raise AssertionError(f"Unexpected Graph call: {method} {url}")
+
+        store = SharePointArtifactStore(
+            tenant_id="tenant-id",
+            client_id="client-id",
+            drive_id="drive-id",
+            source_folder="/ReportGenerator/source-files",
+            access_token_provider=lambda: "token",
+            transport=FakeTransport(handler),
+        )
+
+        artifact = store.get_source_file("Contact Export.csv")
+        self.assertEqual(
+            artifact.metadata["resolved_name"],
+            "Contact_Export_-_Morning_2026-04-29T0800",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

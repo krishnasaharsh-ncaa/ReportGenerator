@@ -1,6 +1,7 @@
 import json
 import mimetypes
 import os
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -151,6 +152,29 @@ def _parse_datetime(value: Optional[str]) -> datetime:
     if parsed.tzinfo is None:
         return parsed.replace(tzinfo=timezone.utc)
     return parsed
+
+
+FILENAME_TIMESTAMP_RE = re.compile(r"(\d{4}-\d{2}-\d{2})T(\d{4}|\d{6})")
+
+
+def _extract_filename_timestamp(name: Optional[str]) -> Optional[datetime]:
+    if not name:
+        return None
+    match = FILENAME_TIMESTAMP_RE.search(name)
+    if not match:
+        return None
+
+    date_part, time_part = match.groups()
+    if len(time_part) == 4:
+        fmt = "%Y-%m-%dT%H%M"
+    else:
+        fmt = "%Y-%m-%dT%H%M%S"
+
+    try:
+        parsed = datetime.strptime(f"{date_part}T{time_part}", fmt)
+    except ValueError:
+        return None
+    return parsed.replace(tzinfo=timezone.utc)
 
 
 class LocalArtifactStore(ArtifactStore):
@@ -459,7 +483,14 @@ class SharePointArtifactStore(ArtifactStore):
         ]
         if not matches:
             return None
-        return max(matches, key=lambda item: _parse_datetime(item.get("lastModifiedDateTime")))
+        return max(
+            matches,
+            key=lambda item: (
+                _extract_filename_timestamp(item.get("name")) is not None,
+                _extract_filename_timestamp(item.get("name")) or datetime.fromtimestamp(0, tz=timezone.utc),
+                _parse_datetime(item.get("lastModifiedDateTime")),
+            ),
+        )
 
     def _resolve_item_for_filename(
         self,
