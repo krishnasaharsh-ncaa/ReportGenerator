@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_WEBAPP_NAME: denholtz-ir-hncfdvb6heegedgz.westus3-01
+  AZURE_WEBAPP_NAME: denholtz-ir
   PYTHON_VERSION: "3.14"
   DEPLOY_ZIP: reportgenerator-release.zip
 
